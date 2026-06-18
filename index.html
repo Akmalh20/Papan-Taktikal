@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Papan Taktikal SK Subang Jaya</title>
+  
+  <!-- Tailwind CSS untuk Rekabentuk Premium & Responsif -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Muat turun React & Babel untuk menjalankan React secara terus dengan stabil -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.3/babel.min.js"></script>
+
+  <!-- Muat turun Firebase SDK Tradisional (Mencegah Ralat Import) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    /* Mengelakkan herotan tak sengaja semasa menyeret elemen pada skrin sentuh */
+    .no-select {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    body {
+      background-color: #0f172a;
+      overflow-x: hidden;
+    }
+  </style>
+</head>
+<body class="no-select">
+
+  <!-- Kontainer Utama Aplikasi React -->
+  <div id="root">
+    <div class="min-h-screen flex items-center justify-center text-white p-6">
+      <div class="text-center">
+        <div class="w-16 h-16 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p class="text-lg font-semibold text-slate-300">Memuatkan Papan Taktikal SK Subang Jaya...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kod Aplikasi Utama React -->
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // Skuad Lalai 15 Pemain
+    const defaultSquad = [
+      { id: 1, name: "Ahmad Danish" },
+      { id: 2, name: "Muhammad Harith" },
+      { id: 3, name: "Adam Rayyan" },
+      { id: 4, name: "Amirul Haikal" },
+      { id: 5, name: "Muhammad Zikri" },
+      { id: 6, name: "Afiq Daniel" },
+      { id: 7, name: "Muhammad Imran" },
+      { id: 8, name: "Haziq Asyraf" },
+      { id: 9, name: "Faris Irfan" },
+      { id: 10, name: "Muhammad Aqil" },
+      { id: 11, name: "Nik Adam" },
+      { id: 12, name: "Syamil Hazim" },
+      { id: 13, name: "Sufian Sauri" },
+      { id: 14, name: "Zaim Radzi" },
+      { id: 15, name: "Adib Hakimi" }
+    ];
+
+    // Formasi Taktikal (9 Pemain Kesebelasan Utama)
+    const formations = {
+      "3-4-1": [
+        { role: "GK", x: 50, y: 88, squadPlayerId: 1 },
+        { role: "DF", x: 22, y: 72, squadPlayerId: 2 },
+        { role: "DF", x: 50, y: 75, squadPlayerId: 3 },
+        { role: "DF", x: 78, y: 72, squadPlayerId: 4 },
+        { role: "LM", x: 12, y: 46, squadPlayerId: 5 },
+        { role: "CM", x: 38, y: 49, squadPlayerId: 6 },
+        { role: "CM", x: 62, y: 49, squadPlayerId: 7 },
+        { role: "RM", x: 88, y: 46, squadPlayerId: 8 },
+        { role: "FW", x: 50, y: 22, squadPlayerId: 9 }
+      ],
+      "3-3-1-1": [
+        { role: "GK", x: 50, y: 88, squadPlayerId: 1 },
+        { role: "DF", x: 22, y: 72, squadPlayerId: 2 },
+        { role: "DF", x: 50, y: 75, squadPlayerId: 3 },
+        { role: "DF", x: 78, y: 72, squadPlayerId: 4 },
+        { role: "LM", x: 18, y: 49, squadPlayerId: 5 },
+        { role: "CM", x: 50, y: 51, squadPlayerId: 6 },
+        { role: "RM", x: 82, y: 49, squadPlayerId: 7 },
+        { role: "AM", x: 50, y: 32, squadPlayerId: 8 },
+        { role: "FW", x: 50, y: 16, squadPlayerId: 9 }
+      ],
+      "5-1-1-1": [
+        { role: "GK", x: 50, y: 88, squadPlayerId: 1 },
+        { role: "LWB", x: 12, y: 74, squadPlayerId: 2 },
+        { role: "CB", x: 31, y: 78, squadPlayerId: 3 },
+        { role: "CB", x: 50, y: 80, squadPlayerId: 4 },
+        { role: "CB", x: 69, y: 78, squadPlayerId: 5 },
+        { role: "RWB", x: 88, y: 74, squadPlayerId: 6 },
+        { role: "DM", x: 50, y: 58, squadPlayerId: 7 },
+        { role: "AM", x: 50, y: 42, squadPlayerId: 8 },
+        { role: "FW", x: 50, y: 24, squadPlayerId: 9 }
+      ],
+      "5-2-1": [
+        { role: "GK", x: 50, y: 88, squadPlayerId: 1 },
+        { role: "LWB", x: 12, y: 74, squadPlayerId: 2 },
+        { role: "CB", x: 31, y: 78, squadPlayerId: 3 },
+        { role: "CB", x: 50, y: 80, squadPlayerId: 4 },
+        { role: "CB", x: 69, y: 78, squadPlayerId: 5 },
+        { role: "RWB", x: 88, y: 74, squadPlayerId: 6 },
+        { role: "CM", x: 34, y: 54, squadPlayerId: 7 },
+        { role: "CM", x: 66, y: 54, squadPlayerId: 8 },
+        { role: "FW", x: 50, y: 28, squadPlayerId: 9 }
+      ]
+    };
+
+    const defaultOpponents = [
+      { id: 101, x: 50, y: 12 },
+      { id: 102, x: 32, y: 26 },
+      { id: 103, x: 68, y: 26 },
+      { id: 104, x: 15, y: 40 },
+      { id: 105, x: 50, y: 42 },
+      { id: 106, x: 85, y: 40 },
+      { id: 107, x: 32, y: 62 },
+      { id: 108, x: 68, y: 62 },
+      { id: 109, x: 50, y: 70 }
+    ];
+
+    // Firebase Setup
+    let db = null;
+    let auth = null;
+    let appId = "sk-subang-jaya-tactics-v2";
+
+    try {
+      if (typeof firebase !== 'undefined') {
+        const firebaseConfig = {
+          apiKey: "",
+          authDomain: "mock-project.firebaseapp.com",
+          projectId: "mock-project",
+          storageBucket: "mock-project.appspot.com",
+          messagingSenderId: "123456",
+          appId: "1:123456:web:123"
+        };
+        // Semak sekiranya Firebase belum diisytiharkan
+        if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+        }
+        db = firebase.firestore();
+        auth = firebase.auth();
+      }
+    } catch (e) {
+      console.warn("Sistem awan Firebase tidak aktif. Mod simpanan tempatan diaktifkan.", e);
+    }
+
+    function App() {
+      const [synced, setSynced] = useState(false);
+      const [squad, setSquad] = useState(() => {
+        const saved = localStorage.getItem('sksj_squad');
+        return saved ? JSON.parse(saved) : defaultSquad;
+      });
+
+      const [activePlayers, setActivePlayers] = useState(() => {
+        const saved = localStorage.getItem('sksj_activePlayers');
+        if (saved) return JSON.parse(saved);
+        return formations["3-4-1"].map((pos, idx) => ({
+          id: idx + 1,
+          x: pos.x,
+          y: pos.y,
+          role: pos.role,
+          squadPlayerId: idx + 1
+        }));
+      });
+
+      const [opponents, setOpponents] = useState(() => {
+        const saved = localStorage.getItem('sksj_opponents');
+        return saved ? JSON.parse(saved) : defaultOpponents;
+      });
+
+      const [showOpponents, setShowOpponents] = useState(true);
+      const [drawColor, setDrawColor] = useState('#ffffff');
+      const [lineWidth, setLineWidth] = useState(3);
+      const [drawingMode, setDrawingMode] = useState(false); // false = Mod Seret, true = Mod Melukis
+      const [drawings, setDrawings] = useState([]);
+      const [activeFormation, setActiveFormation] = useState("3-4-1");
+      const [activeMobileTab, setActiveMobileTab] = useState("board");
+      const [draggedItem, setDraggedItem] = useState(null);
+
+      const pitchRef = useRef(null);
+      const canvasRef = useRef(null);
+      const [isDrawing, setIsDrawing] = useState(false);
+      const [currentLine, setCurrentLine] = useState(null);
+
+      // Simpan data ke LocalStorage sebagai sandaran utama
+      useEffect(() => {
+        localStorage.setItem('sksj_squad', JSON.stringify(squad));
+        localStorage.setItem('sksj_activePlayers', JSON.stringify(activePlayers));
+        localStorage.setItem('sksj_opponents', JSON.stringify(opponents));
+      }, [squad, activePlayers, opponents]);
+
+      // 1. Firebase Live Sync (Selamat & Kalis Ralat)
+      useEffect(() => {
+        if (!db) {
+          setSynced(false);
+          return;
+        }
+
+        const initAuthAndSync = async () => {
+          try {
+            // Log masuk tanpa nama secara automatik
+            let userCredential = auth.currentUser;
+            if (!userCredential) {
+              userCredential = await auth.signInAnonymously();
+            }
+
+            const docRef = db.doc(`artifacts/${appId}/public/data/live_state`);
+            
+            // Dengar perubahan masa nyata
+            const unsubscribe = docRef.onSnapshot((docSnap) => {
+              if (docSnap.exists) {
+                const data = docSnap.data();
+                if (data.squad) setSquad(data.squad);
+                if (data.activePlayers) setActivePlayers(data.activePlayers);
+                if (data.opponents) setOpponents(data.opponents);
+                if (data.drawings) setDrawings(data.drawings);
+                if (typeof data.showOpponents !== 'undefined') setShowOpponents(data.showOpponents);
+                if (data.activeFormation) setActiveFormation(data.activeFormation);
+              }
+              setSynced(true);
+            }, (error) => {
+              console.log("Menunggu kemas kini pelayan...", error);
+            });
+
+            return unsubscribe;
+          } catch (err) {
+            console.error("Gagal menyambung ke Firebase:", err);
+          }
+        };
+
+        let unsubPromise = initAuthAndSync();
+        return () => {
+          if (unsubPromise && typeof unsubPromise.then === 'function') {
+            unsubPromise.then(unsub => unsub && unsub());
+          }
+        };
+      }, []);
+
+      // Hantar kemas kini ke Cloud Firestore
+      const syncToCloud = async (newData = {}) => {
+        if (!db) return;
+        try {
+          const docRef = db.doc(`artifacts/${appId}/public/data/live_state`);
+          await docRef.set({
+            squad,
+            activePlayers,
+            opponents,
+            drawings,
+            showOpponents,
+            activeFormation,
+            ...newData
+          }, { merge: true });
+        } catch (e) {
+          console.warn("Gagal menyegerakan data ke Firebase:", e);
+        }
+      };
+
+      // 2. Lukisan Taktikal Pada Kanvas
+      const drawCanvas = () => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const rect = canvas.getBoundingClientRect();
+        
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+        
+        ctx.clearRect(0, 0, rect.width, rect.height);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        const drawLine = (line) => {
+          if (!line.points || line.points.length < 2) return;
+          ctx.beginPath();
+          ctx.strokeStyle = line.color || '#ffffff';
+          ctx.lineWidth = line.width || 3;
+          
+          const firstPoint = line.points[0];
+          ctx.moveTo(firstPoint.x * rect.width / 100, firstPoint.y * rect.height / 100);
+          
+          for (let i = 1; i < line.points.length; i++) {
+            const p = line.points[i];
+            ctx.lineTo(p.x * rect.width / 100, p.y * rect.height / 100);
+          }
+          ctx.stroke();
+        };
+
+        if (Array.isArray(drawings)) {
+          drawings.forEach(drawLine);
+        }
+        if (currentLine) {
+          drawLine(currentLine);
+        }
+      };
+
+      useEffect(() => {
+        drawCanvas();
+      }, [drawings, currentLine]);
+
+      useEffect(() => {
+        const handleResize = () => {
+          setTimeout(drawCanvas, 150);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+      }, [drawings, currentLine]);
+
+      const getPitchCoords = (clientX, clientY) => {
+        const pitch = pitchRef.current;
+        if (!pitch) return { x: 0, y: 0 };
+        const rect = pitch.getBoundingClientRect();
+        const x = ((clientX - rect.left) / rect.width) * 100;
+        const y = ((clientY - rect.top) / rect.height) * 100;
+        return {
+          x: Math.max(0, Math.min(100, x)),
+          y: Math.max(0, Math.min(100, y))
+        };
+      };
+
+      // 3. Pengendalian Acara Seretan & Lukisan (Sangat Responsif Pada Semua Peranti)
+      const handlePointerDown = (e) => {
+        if (drawingMode) {
+          e.preventDefault();
+          const rect = e.target.getBoundingClientRect();
+          const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+          const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+          if (!clientX || !clientY) return;
+
+          const coords = getPitchCoords(clientX, clientY);
+          setIsDrawing(true);
+          setCurrentLine({
+            color: drawColor,
+            width: lineWidth,
+            points: [coords]
+          });
+        }
+      };
+
+      const handlePointerMove = (e) => {
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+        if (!clientX || !clientY) return;
+
+        const coords = getPitchCoords(clientX, clientY);
+
+        if (isDrawing && currentLine) {
+          setCurrentLine(prev => ({
+            ...prev,
+            points: [...prev.points, coords]
+          }));
+        } else if (draggedItem) {
+          if (draggedItem.type === 'player') {
+            const updated = [...activePlayers];
+            updated[draggedItem.index] = { ...updated[draggedItem.index], x: coords.x, y: coords.y };
+            setActivePlayers(updated);
+          } else if (draggedItem.type === 'opponent') {
+            const updated = [...opponents];
+            updated[draggedItem.index] = { ...updated[draggedItem.index], x: coords.x, y: coords.y };
+            setOpponents(updated);
+          }
+        }
+      };
+
+      const handlePointerUp = () => {
+        if (isDrawing && currentLine) {
+          const updatedDrawings = [...drawings, currentLine];
+          setDrawings(updatedDrawings);
+          setCurrentLine(null);
+          setIsDrawing(false);
+          syncToCloud({ drawings: updatedDrawings });
+        }
+        if (draggedItem) {
+          setDraggedItem(null);
+          syncToCloud({ activePlayers, opponents });
+        }
+      };
+
+      // 4. Formasi & Skuad
+      const applyFormationPreset = (formationKey, currentSquad = squad) => {
+        const coords = formations[formationKey];
+        if (!coords) return;
+
+        const updatedPositions = coords.map((pos, idx) => {
+          const defaultId = currentSquad[idx]?.id || 1;
+          return {
+            id: idx + 1,
+            x: pos.x,
+            y: pos.y,
+            role: pos.role,
+            squadPlayerId: defaultId
+          };
+        });
+
+        setActivePlayers(updatedPositions);
+        setActiveFormation(formationKey);
+        syncToCloud({
+          activePlayers: updatedPositions,
+          activeFormation: formationKey,
+          squad: currentSquad
+        });
+      };
+
+      const updateSquadMemberName = (id, newName) => {
+        const updatedSquad = squad.map(m => m.id === id ? { ...m, name: newName } : m);
+        setSquad(updatedSquad);
+        syncToCloud({ squad: updatedSquad });
+      };
+
+      const assignPlayerToPosition = (slotIndex, squadId) => {
+        const updated = [...activePlayers];
+        if (updated[slotIndex]) {
+          updated[slotIndex].squadPlayerId = Number(squadId);
+        }
+        setActivePlayers(updated);
+        syncToCloud({ activePlayers: updated });
+      };
+
+      const resetAllDrawings = () => {
+        setDrawings([]);
+        syncToCloud({ drawings: [] });
+      };
+
+      const resetPositions = () => {
+        setOpponents(defaultOpponents);
+        applyFormationPreset(activeFormation);
+      };
+
+      return (
+        <div className="min-h-screen bg-slate-900 text-white flex flex-col font-sans select-none pb-8">
+          
+          {/* Menu Atas Premium */}
+          <header className="bg-slate-950 border-b border-slate-800 py-3.5 px-4 flex justify-between items-center shadow-lg sticky top-0 z-50">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-gradient-to-tr from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center font-black text-slate-950 text-base shadow-inner">
+                SJS
+              </div>
+              <div>
+                <h1 className="text-base md:text-xl font-bold tracking-tight bg-gradient-to-r from-teal-400 to-emerald-400 bg-clip-text text-transparent">
+                  SK Subang Jaya
+                </h1>
+                <p className="text-[10px] md:text-xs text-slate-400">Papan Taktikal 9 Sebelah • Skuad 15 Pemain</p>
+              </div>
+            </div>
+            
+            {/* Indikator Penyegerakan Pintar */}
+            <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-3 py-1 rounded-full text-[10px] md:text-xs">
+              <span className={`w-2.5 h-2.5 rounded-full ${synced ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500 animate-pulse'}`}></span>
+              <span className="text-slate-300 font-bold">
+                {synced ? 'Penyelarasan Awan Aktif' : 'Mod Tempatan'}
+              </span>
+            </div>
+          </header>
+
+          {/* Tab Mudah Alih (Hanya muncul di skrin telefon pintar) */}
+          <div className="lg:hidden flex bg-slate-950 border-b border-slate-850 p-1">
+            <button
+              onClick={() => setActiveMobileTab("board")}
+              className={`flex-1 py-2.5 text-center text-xs font-bold rounded-lg transition-all ${activeMobileTab === "board" ? 'bg-slate-800 text-teal-400' : 'text-slate-400'}`}
+            >
+              ⚽ Padang & Taktik
+            </button>
+            <button
+              onClick={() => setActiveMobileTab("squad")}
+              className={`flex-1 py-2.5 text-center text-xs font-bold rounded-lg transition-all ${activeMobileTab === "squad" ? 'bg-slate-800 text-teal-400' : 'text-slate-400'}`}
+            >
+              📋 Daftar Skuad (15 Pemain)
+            </button>
+          </div>
+
+          {/* Grid Ruang Kerja Utama */}
+          <main className="flex-1 p-3 md:p-6 grid grid-cols-1 lg:grid-cols-4 gap-5 max-w-[1600px] mx-auto w-full">
+            
+            {/* Panel Kiri: Pilihan Formasi & Alat Melukis */}
+            <div className={`lg:col-span-1 flex flex-col gap-4 ${activeMobileTab === "board" ? 'flex' : 'hidden lg:flex'}`}>
+              
+              {/* Seksyen Formasi */}
+              <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl shadow-lg">
+                <h2 className="font-bold text-teal-400 text-sm md:text-base mb-3 flex items-center gap-2">
+                  ⚽ Pilih Formasi Skuad SJS
+                </h2>
+                
+                <div className="mb-4">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 block mb-2">
+                    Taktikal Menyerang (Attacking)
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button 
+                      onClick={() => applyFormationPreset("3-4-1")}
+                      className={`py-2 px-2.5 rounded-lg text-xs md:text-sm font-bold transition ${activeFormation === "3-4-1" ? 'bg-teal-500 text-slate-950 shadow-md scale-[1.02]' : 'bg-slate-900 hover:bg-slate-850 text-slate-300'}`}
+                    >
+                      3 - 4 - 1
+                    </button>
+                    <button 
+                      onClick={() => applyFormationPreset("3-3-1-1")}
+                      className={`py-2 px-2.5 rounded-lg text-xs md:text-sm font-bold transition ${activeFormation === "3-3-1-1" ? 'bg-teal-500 text-slate-950 shadow-md scale-[1.02]' : 'bg-slate-900 hover:bg-slate-850 text-slate-300'}`}
+                    >
+                      3 - 3 - 1 - 1
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 block mb-2">
+                    Taktikal Bertahan (Defending)
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button 
+                      onClick={() => applyFormationPreset("5-1-1-1")}
+                      className={`py-2 px-2.5 rounded-lg text-xs md:text-sm font-bold transition ${activeFormation === "5-1-1-1" ? 'bg-teal-500 text-slate-950 shadow-md scale-[1.02]' : 'bg-slate-900 hover:bg-slate-850 text-slate-300'}`}
+                    >
+                      5 - 1 - 1 - 1
+                    </button>
+                    <button 
+                      onClick={() => applyFormationPreset("5-2-1")}
+                      className={`py-2 px-2.5 rounded-lg text-xs md:text-sm font-bold transition ${activeFormation === "5-2-1" ? 'bg-teal-500 text-slate-950 shadow-md scale-[1.02]' : 'bg-slate-900 hover:bg-slate-850 text-slate-300'}`}
+                    >
+                      5 - 2 - 1
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Seksyen Alat Melukis */}
+              <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl shadow-lg">
+                <h2 className="font-bold text-teal-400 text-sm md:text-base mb-3 flex items-center gap-2">
+                  🎨 Alat Lukisan & Kawalan
+                </h2>
+
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  <button
+                    onClick={() => setDrawingMode(false)}
+                    className={`py-2.5 px-2.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition ${!drawingMode ? 'bg-teal-500 text-slate-950 shadow-lg scale-105' : 'bg-slate-900 text-slate-400'}`}
+                  >
+                    <span>✋ Seret Token</span>
+                  </button>
+                  <button
+                    onClick={() => setDrawingMode(true)}
+                    className={`py-2.5 px-2.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition ${drawingMode ? 'bg-indigo-600 text-white shadow-lg scale-105' : 'bg-slate-900 text-slate-400'}`}
+                  >
+                    <span>✏️ Melukis Taktik</span>
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block mb-1.5">Warna Garisan</span>
+                    <div className="flex gap-2">
+                      {['#ffffff', '#facc15', '#ef4444', '#3b82f6', '#10b981'].map((color) => (
+                        <button
+                          key={color}
+                          onClick={() => { setDrawColor(color); setDrawingMode(true); }}
+                          style={{ backgroundColor: color }}
+                          className={`w-6 h-6 rounded-full border-2 transition ${drawColor === color ? 'border-slate-200 scale-110' : 'border-transparent'}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+                      <span>Saiz Pen Melukis</span>
+                      <span>{lineWidth}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="2"
+                      max="8"
+                      value={lineWidth}
+                      onChange={(e) => setLineWidth(Number(e.target.value))}
+                      className="w-full accent-teal-500 cursor-pointer"
+                    />
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-800 space-y-2">
+                    <button
+                      onClick={resetAllDrawings}
+                      className="w-full py-2 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/80 text-rose-300 text-xs font-bold rounded-lg transition"
+                    >
+                      🧹 Padam Semua Lukisan
+                    </button>
+                    <button
+                      onClick={resetPositions}
+                      className="w-full py-2 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 text-xs font-semibold rounded-lg transition"
+                    >
+                      🔄 Reset Posisi Pemain
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Seksyen Pihak Lawan */}
+              <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl shadow-lg">
+                <h2 className="font-bold text-rose-400 text-sm md:text-base mb-3 flex items-center gap-2">
+                  🛡️ Set Pihak Lawan
+                </h2>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-300">Tunjukkan Penanda Merah</span>
+                  <button
+                    onClick={() => {
+                      const val = !showOpponents;
+                      setShowOpponents(val);
+                      syncToCloud({ showOpponents: val });
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${showOpponents ? 'bg-rose-500 text-slate-950 shadow-md' : 'bg-slate-850 text-slate-400'}`}
+                  >
+                    {showOpponents ? 'AKTIF' : 'SEMBUNYI'}
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Panel Tengah: Kawasan Padang Taktikal */}
+            <div className={`lg:col-span-2 flex flex-col items-center justify-start bg-slate-950 border border-slate-800 rounded-2xl p-3 md:p-4 shadow-xl relative ${activeMobileTab === "board" ? 'flex' : 'hidden lg:flex'}`}>
+              
+              <div className="w-full flex justify-between items-center mb-3 text-xs">
+                <span className="font-bold text-slate-300 flex items-center gap-1.5">
+                  🟢 Kawasan Padang Strategik
+                </span>
+                <div className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${drawingMode ? 'bg-indigo-950 text-indigo-400 border border-indigo-800' : 'bg-teal-950 text-teal-400 border border-teal-800'}`}>
+                  {drawingMode ? '✍️ Sila Lukis Skrin' : '✋ Sila Seret Pemain'}
+                </div>
+              </div>
+
+              {/* Padang Taktikal */}
+              <div 
+                ref={pitchRef}
+                className="w-full aspect-[3/4] max-w-[440px] md:max-w-[480px] bg-emerald-800 border-2 md:border-4 border-slate-100 rounded-lg relative overflow-hidden shadow-2xl"
+                style={{
+                  backgroundImage: 'radial-gradient(circle at center, #0f766e 0%, #065f46 100%)',
+                  touchAction: 'none'
+                }}
+              >
+                {/* Garisan Padang SVG */}
+                <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-50" viewBox="0 0 100 133" preserveAspectRatio="none">
+                  <circle cx="50" cy="66.5" r="14" fill="none" stroke="#ffffff" strokeWidth="0.8" />
+                  <line x1="0" y1="66.5" x2="100" y2="66.5" stroke="#ffffff" strokeWidth="0.8" />
+                  <circle cx="50" cy="66.5" r="1" fill="#ffffff" />
+
+                  <rect x="20" y="0" width="60" height="20" fill="none" stroke="#ffffff" strokeWidth="0.8" />
+                  <rect x="33" y="0" width="34" height="7" fill="none" stroke="#ffffff" strokeWidth="0.8" />
+                  <path d="M 38 20 A 13 13 0 0 0 62 20" fill="none" stroke="#ffffff" strokeWidth="0.8" />
+
+                  <rect x="20" y="113" width="60" height="20" fill="none" stroke="#ffffff" strokeWidth="0.8" />
+                  <rect x="33" y="126" width="34" height="7" fill="none" stroke="#ffffff" strokeWidth="0.8" />
+                  <path d="M 38 113 A 13 13 0 0 1 62 113" fill="none" stroke="#ffffff" strokeWidth="0.8" />
+
+                  <path d="M 0 3 A 3 3 0 0 0 3 0" fill="none" stroke="#ffffff" strokeWidth="0.8" />
+                  <path d="M 97 0 A 3 3 0 0 0 100 3" fill="none" stroke="#ffffff" strokeWidth="0.8" />
+                  <path d="M 0 130 A 3 3 0 0 1 3 133" fill="none" stroke="#ffffff" strokeWidth="0.8" />
+                  <path d="M 97 133 A 3 3 0 0 1 100 130" fill="none" stroke="#ffffff" strokeWidth="0.8" />
+                </svg>
+
+                {/* Kanvas Melukis */}
+                <canvas
+                  ref={canvasRef}
+                  className="absolute inset-0 w-full h-full z-10"
+                  onPointerDown={handlePointerDown}
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={handlePointerUp}
+                  onPointerLeave={handlePointerUp}
+                  style={{ cursor: drawingMode ? 'crosshair' : 'default' }}
+                />
+
+                {/* Bulatan Pemain SK Subang Jaya */}
+                {activePlayers.map((player, idx) => {
+                  const squadMember = squad.find(m => m.id === player.squadPlayerId) || { name: `Pemain ${player.id}` };
+
+                  return (
+                    <div
+                      key={`player-marker-${player.id}`}
+                      className="absolute z-20 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
+                      style={{
+                        left: `${player.x}%`,
+                        top: `${player.y}%`,
+                      }}
+                    >
+                      {/* Token Pemain */}
+                      <div
+                        className="w-9 h-9 rounded-full bg-slate-950 border-2 border-yellow-400 text-yellow-300 flex items-center justify-center font-bold text-xs shadow-xl cursor-grab active:cursor-grabbing hover:scale-110 transition relative"
+                        style={{ touchAction: 'none' }}
+                        onPointerDown={(e) => {
+                          if (drawingMode) return;
+                          e.stopPropagation();
+                          setDraggedItem({ type: 'player', index: idx });
+                        }}
+                      >
+                        {player.role}
+                        
+                        <span className="absolute -top-3 px-1 py-0.2 bg-yellow-400 text-slate-950 text-[8px] font-black rounded-full scale-90">
+                          {idx + 1}
+                        </span>
+                      </div>
+                      
+                      {/* Pilihan Dropdown Nama Pemain 15 Orang */}
+                      <div className="mt-1 bg-slate-950 border border-slate-700/60 rounded px-1 flex items-center shadow-md z-30">
+                        <select
+                          value={player.squadPlayerId}
+                          onChange={(e) => assignPlayerToPosition(idx, e.target.value)}
+                          className="bg-transparent text-[10px] font-bold text-white focus:outline-none cursor-pointer max-w-[85px] py-0.5 truncate"
+                        >
+                          {squad.map((member) => (
+                            <option key={member.id} value={member.id} className="bg-slate-950 text-white text-xs">
+                              {member.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Token Pemain Lawan */}
+                {showOpponents && opponents.map((opp, idx) => (
+                  <div
+                    key={`opp-${opp.id}`}
+                    className="absolute z-20 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
+                    style={{
+                      left: `${opp.x}%`,
+                      top: `${opp.y}%`,
+                    }}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-full bg-rose-600 border border-white text-white flex items-center justify-center font-black text-xs shadow-xl cursor-grab active:cursor-grabbing hover:scale-110 transition"
+                      style={{ touchAction: 'none' }}
+                      onPointerDown={(e) => {
+                        if (drawingMode) return;
+                        e.stopPropagation();
+                        setDraggedItem({ type: 'opponent', index: idx });
+                      }}
+                    >
+                      X
+                    </div>
+                  </div>
+                ))}
+
+              </div>
+
+              {/* Tips Petunjuk */}
+              <div className="mt-3 p-2 bg-slate-900 border border-slate-800 rounded-lg text-[10.5px] text-slate-400 text-center max-w-[440px]">
+                💡 <strong className="text-teal-400 font-bold">Panduan Jurulatih:</strong> Sila gunakan butang <span className="text-white font-bold">"✋ Seret Token"</span> terlebih dahulu untuk menyusun taktik larian pemain ke mana-mana arah padang!
+              </div>
+            </div>
+
+            {/* Panel Kanan: Senarai Nama Skuad (15 Pemain) */}
+            <div className={`lg:col-span-1 flex flex-col gap-4 ${activeMobileTab === "squad" ? 'flex' : 'hidden lg:flex'}`}>
+              <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl shadow-lg flex-1 flex flex-col">
+                <div className="mb-2">
+                  <h2 className="font-bold text-teal-400 text-sm md:text-base flex items-center gap-2">
+                    📋 Skuad Utama (15 Pemain)
+                  </h2>
+                  <p className="text-[11px] text-slate-500">Tukar nama pemain simpanan & utama di sini:</p>
+                </div>
+                
+                <div className="space-y-2 flex-1 overflow-y-auto max-h-[460px] md:max-h-[520px] pr-1">
+                  {squad.map((member, index) => {
+                    const onFieldPosition = activePlayers.find(ap => ap.squadPlayerId === member.id);
+
+                    return (
+                      <div key={member.id} className="bg-slate-900/50 border border-slate-850 p-2 rounded-lg flex flex-col gap-1">
+                        <div className="flex justify-between items-center text-[10px]">
+                          <span className="text-slate-400 font-bold">Pemain #{index + 1}</span>
+                          {onFieldPosition ? (
+                            <span className="text-emerald-400 font-black bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-800">
+                              Kesebelasan ({onFieldPosition.role})
+                            </span>
+                          ) : (
+                            <span className="text-slate-500 font-semibold bg-slate-800 px-1.5 py-0.5 rounded">
+                              Simpanan
+                            </span>
+                          )}
+                        </div>
+                        
+                        <input
+                          type="text"
+                          value={member.name}
+                          onChange={(e) => updateSquadMemberName(member.id, e.target.value)}
+                          className="bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-white font-semibold focus:outline-none focus:border-teal-500 transition w-full"
+                          placeholder={`Nama Pemain ${member.id}`}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+          </main>
+
+          <footer className="bg-slate-950 border-t border-slate-900 py-3 text-center text-[11px] text-slate-500 mt-auto">
+            <p>© SK Subang Jaya. Direka khas untuk kemudahan taktik 9-sebelah anda di mana-mana jua.</p>
+          </footer>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
+
